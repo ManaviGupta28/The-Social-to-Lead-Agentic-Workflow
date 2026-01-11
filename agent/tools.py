@@ -82,13 +82,33 @@ def extract_lead_info(text: str, waiting_for: str) -> Dict[str, str]:
             result["email"] = text.strip()
     
     elif waiting_for == "platform":
-        # Extract platform
-        platforms = ["youtube", "instagram", "tiktok", "facebook", "twitter", "twitch", "linkedin"]
-        for platform in platforms:
-            if platform in text_lower:
-                result["platform"] = platform.capitalize()
+        # Extract platform with fuzzy matching for common misspellings
+        text_lower = text_lower.strip()
+        platform_map = {
+            "youtube": "YouTube",
+            "youtue": "YouTube",  # Common misspelling
+            "youtub": "YouTube",
+            "instagram": "Instagram",
+            "insta": "Instagram",
+            "tiktok": "TikTok",
+            "ticktok": "TikTok",
+            "facebook": "Facebook",
+            "fb": "Facebook",
+            "twitter": "Twitter",
+            "x": "Twitter",
+            "twitch": "Twitch",
+            "linkedin": "LinkedIn",
+            "linked": "LinkedIn"
+        }
+        
+        # Check for exact or partial matches
+        for key, value in platform_map.items():
+            if key in text_lower:
+                result["platform"] = value
                 break
+        
+        # If no match found, use the text as-is (capitalized)
         if not result.get("platform"):
-            result["platform"] = text.strip()
+            result["platform"] = text.strip().capitalize()
     
     return result

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -63,8 +64,15 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
 
         .chat-messages {
@@ -85,6 +93,7 @@
                 opacity: 0;
                 transform: translateY(10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -166,9 +175,13 @@
         }
 
         @keyframes typing {
-            0%, 60%, 100% {
+
+            0%,
+            60%,
+            100% {
                 transform: translateY(0);
             }
+
             30% {
                 transform: translateY(-10px);
             }
@@ -255,6 +268,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="chat-container">
         <div class="chat-header">
@@ -278,13 +292,8 @@
 
         <div class="chat-input-container">
             <form class="chat-input-form" id="chat-form">
-                <input 
-                    type="text" 
-                    id="message-input" 
-                    placeholder="Type your message here..." 
-                    autocomplete="off"
-                    required
-                />
+                <input type="text" id="message-input" placeholder="Type your message here..." autocomplete="off"
+                    required />
                 <button type="submit" id="send-button">Send</button>
                 <button type="button" id="clear-button">Clear</button>
             </form>
@@ -292,9 +301,9 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:8000/webhook';
+        const API_URL = 'http://localhost:8099/webhook';
         const THREAD_ID = 'web_user_' + Math.random().toString(36).substr(2, 9);
-        
+
         const chatMessages = document.getElementById('chat-messages');
         const messageInput = document.getElementById('message-input');
         const chatForm = document.getElementById('chat-form');
@@ -310,18 +319,19 @@
         function addMessage(content, isUser, intent = null) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'agent'}`;
-            
+
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
-            contentDiv.textContent = content;
-            
+            // Use innerHTML to preserve line breaks and formatting
+            contentDiv.innerHTML = content.replace(/\n/g, '<br>');
+
             if (intent && !isUser) {
                 const badge = document.createElement('div');
                 badge.className = 'intent-badge';
                 badge.textContent = `Intent: ${intent}`;
                 contentDiv.appendChild(badge);
             }
-            
+
             messageDiv.appendChild(contentDiv);
             chatMessages.appendChild(messageDiv);
             scrollToBottom();
@@ -377,8 +387,8 @@
                 const data = await response.json();
                 return data;
             } catch (error) {
-                if (error.message.includes('Failed to fetch')) {
-                    throw new Error('Cannot connect to server. Please ensure the backend is running on http://localhost:8000');
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    throw new Error('Cannot connect to server. Please ensure the backend is running on http://localhost:8099');
                 }
                 throw error;
             }
@@ -387,7 +397,7 @@
         // Handle form submission
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const message = messageInput.value.trim();
             if (!message) return;
 
@@ -405,7 +415,7 @@
             try {
                 // Send to API
                 const response = await sendMessage(message);
-                
+
                 // Hide typing indicator
                 setTyping(false);
 
@@ -432,10 +442,37 @@
             }
         });
 
+        // Check server connection on load
+        async function checkServerConnection() {
+            try {
+                const response = await fetch('http://localhost:8099/health');
+                if (response.ok) {
+                    console.log('✅ Server connection successful');
+                    const statusIndicator = document.querySelector('.status-indicator');
+                    if (statusIndicator) {
+                        statusIndicator.style.background = '#4ade80';
+                    }
+                } else {
+                    console.warn('⚠️ Server responded with error');
+                }
+            } catch (error) {
+                console.error('❌ Cannot connect to server:', error);
+                showError('Cannot connect to server. Please ensure the backend is running on http://localhost:8099');
+                const statusIndicator = document.querySelector('.status-indicator');
+                if (statusIndicator) {
+                    statusIndicator.style.background = '#ef4444';
+                }
+            }
+        }
+
+        // Check connection on page load
+        checkServerConnection();
+
         // Focus input on load
         messageInput.focus();
-        
+
         console.log('AutoStream AI Chat initialized with thread ID:', THREAD_ID);
     </script>
 </body>
+
 </html>

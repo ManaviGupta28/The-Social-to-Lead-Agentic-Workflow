@@ -13,6 +13,12 @@ import os
 from dotenv import load_dotenv
 load_dotenv()  # Load .env file
 
+# Explicitly set cache directories to local project paths (avoid spaces in user profile)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+os.environ['TRANSFORMERS_CACHE'] = os.path.join(current_dir, 'models', 'transformers')
+os.environ['HF_HOME'] = os.path.join(current_dir, 'models', 'huggingface')
+os.environ['XDG_CACHE_HOME'] = os.path.join(current_dir, 'models', 'cache')
+
 # Check if API key is set
 if not os.getenv("GOOGLE_API_KEY"):
     print("⚠️  WARNING: GOOGLE_API_KEY not found in environment variables!")
@@ -22,9 +28,12 @@ if not os.getenv("GOOGLE_API_KEY"):
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
 import uvicorn
+import os
 
 from langchain_core.messages import HumanMessage
 from agent.graph import agent_graph
@@ -71,14 +80,18 @@ class WebhookResponse(BaseModel):
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
+    """Root endpoint - serves the chat interface"""
+    html_path = os.path.join(current_dir, "index.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
     return {
         "service": "AutoStream AI Agent",
         "status": "running",
         "version": "1.0.0",
         "endpoints": {
             "webhook": "/webhook",
-            "health": "/health"
+            "health": "/health",
+            "chat": "/ (this page)"
         }
     }
 
@@ -106,6 +119,7 @@ async def webhook(request: WebhookRequest):
     Returns:
         WebhookResponse with agent's reply
     """
+    print(f"\n📩 [DEBUG] Webhook Request Received: '{request.message}' for thread {request.thread_id}")
     try:
         # Create configuration with thread ID for state persistence
         config = {
@@ -114,16 +128,14 @@ async def webhook(request: WebhookRequest):
             }
         }
         
-        # Prepare input with user message and initialize state fields
+        # Prepare input with user message only
+        # LangGraph will merge this with persisted state from the checkpointer
+        # Don't reset state fields - they should persist across messages
         input_data = {
-            "messages": [HumanMessage(content=request.message)],
-            "intent": "unknown",
-            "lead_info": {"name": None, "email": None, "platform": None},
-            "next_action": "classify",
-            "waiting_for": None
+            "messages": [HumanMessage(content=request.message)]
         }
         
-        # Invoke the agent graph
+        # Invoke the agent graph - state will be loaded from checkpointer using thread_id
         result = agent_graph.invoke(input_data, config=config)
         
         # Extract the latest AI message
@@ -179,6 +191,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True
+        port=8099,
+        reload=False
     )

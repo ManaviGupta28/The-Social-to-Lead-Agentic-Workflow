@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()  # Load environment variables
 
 # Use local HuggingFace embeddings instead of Google (no API needed, completely free)
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -42,10 +42,16 @@ class KnowledgeBaseRetriever:
         
         # Use local HuggingFace embeddings (completely free, no API needed)
         # This model runs locally on your machine
+        # We specify a local cache_folder to avoid issues with spaces in user's home directory
+        cache_dir = os.path.join(os.path.dirname(__file__), ".cache")
+        os.makedirs(cache_dir, exist_ok=True)
+        
+        print(f"Initializing HuggingFaceEmbeddings with cache at: {cache_dir}")
         self.embeddings = HuggingFaceEmbeddings(
             model_name="all-MiniLM-L6-v2",  # Fast, lightweight model
             model_kwargs={'device': 'cpu'},
-            encode_kwargs={'normalize_embeddings': True}
+            encode_kwargs={'normalize_embeddings': True},
+            cache_folder=cache_dir
         )
         
         # Initialize the vector store
@@ -118,7 +124,9 @@ class KnowledgeBaseRetriever:
     
     def _build_vectorstore(self):
         """Build FAISS vector store from documents"""
+        print("🔨 [DEBUG] Building vector store...")
         documents = self._create_documents()
+        print(f"📄 [DEBUG] Created {len(documents)} base documents.")
         
         # Split documents if they're too long
         text_splitter = RecursiveCharacterTextSplitter(
@@ -128,12 +136,15 @@ class KnowledgeBaseRetriever:
         )
         
         split_docs = text_splitter.split_documents(documents)
+        print(f"✂️ [DEBUG] Split into {len(split_docs)} chunks.")
         
         # Create FAISS vector store
+        print("🏗️ [DEBUG] Creating FAISS index from chunks (this involves embedding)...")
         self.vectorstore = FAISS.from_documents(
             documents=split_docs,
             embedding=self.embeddings
         )
+        print("✅ [DEBUG] Vector store build complete.")
     
     def retrieve(self, query: str, k: int = 3) -> List[Document]:
         """
@@ -147,9 +158,13 @@ class KnowledgeBaseRetriever:
             List of relevant Document objects
         """
         if self.vectorstore is None:
+            print("⚠️ [DEBUG] Vector store is None, initialization failed?")
             raise ValueError("Vector store not initialized")
         
-        return self.vectorstore.similarity_search(query, k=k)
+        print(f"🔍 [DEBUG] Searching for: {query}")
+        results = self.vectorstore.similarity_search(query, k=k)
+        print(f"📄 [DEBUG] Found {len(results)} relevant documents.")
+        return results
     
     def get_context(self, query: str, k: int = 3) -> str:
         """
@@ -168,7 +183,8 @@ class KnowledgeBaseRetriever:
         for i, doc in enumerate(docs, 1):
             context_parts.append(f"[Context {i}]\n{doc.page_content}")
         
-        return "\n\n".join(context_parts)
+        context_str = "\n\n".join(context_parts)
+        return context_str
 
 
 # Singleton instance for reuse
@@ -177,6 +193,8 @@ _retriever_instance = None
 def get_retriever() -> KnowledgeBaseRetriever:
     """Get or create the knowledge base retriever instance"""
     global _retriever_instance
+    print("📍 [DEBUG] get_retriever() called")
     if _retriever_instance is None:
+        print("📍 [DEBUG] Initializing KnowledgeBaseRetriever singleton...")
         _retriever_instance = KnowledgeBaseRetriever()
     return _retriever_instance

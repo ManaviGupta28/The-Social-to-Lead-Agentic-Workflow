@@ -112,7 +112,7 @@ def create_agent_graph():
         route_next_action,
         {
             "end": END,
-            "execute_tool": "tool_execution",
+            "tool_execution": "tool_execution",
             "router": "intent_classifier"
         }
     )
