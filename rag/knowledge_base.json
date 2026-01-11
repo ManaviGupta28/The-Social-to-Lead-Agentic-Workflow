@@ -1,0 +1,82 @@
+{
+  "company": "AutoStream",
+  "description": "AutoStream is a SaaS product that provides automated video editing tools for content creators.",
+  "pricing_plans": [
+    {
+      "name": "Basic Plan",
+      "price": "$29/month",
+      "price_numeric": 29,
+      "features": [
+        "10 videos per month",
+        "720p resolution maximum",
+        "Standard editing tools",
+        "Email support (business hours)",
+        "Cloud storage: 50GB"
+      ],
+      "limitations": [
+        "Limited to 10 videos per month",
+        "Maximum resolution is 720p",
+        "No AI-powered features",
+        "Support only during business hours"
+      ]
+    },
+    {
+      "name": "Pro Plan",
+      "price": "$79/month",
+      "price_numeric": 79,
+      "features": [
+        "Unlimited videos per month",
+        "4K resolution support",
+        "AI-powered auto captions",
+        "AI-powered scene detection",
+        "Advanced color grading",
+        "24/7 priority support",
+        "Cloud storage: 500GB",
+        "Custom branding removal",
+        "Multi-track audio editing"
+      ],
+      "limitations": [],
+      "recommended_for": "Professional content creators, YouTubers, and businesses"
+    }
+  ],
+  "policies": [
+    {
+      "title": "Refund Policy",
+      "description": "Refunds are available within 7 days of purchase. After 7 days, no refunds will be issued. To request a refund, contact our support team with your order details."
+    },
+    {
+      "title": "Support Availability",
+      "description": "24/7 support is available exclusively for Pro plan subscribers. Basic plan users receive email support during business hours (9 AM - 6 PM EST, Monday to Friday)."
+    },
+    {
+      "title": "Cancellation Policy",
+      "description": "You can cancel your subscription at any time. Cancellations take effect at the end of your current billing cycle. You'll retain access to all features until the cycle ends."
+    },
+    {
+      "title": "Free Trial",
+      "description": "Both plans come with a 14-day free trial. No credit card required. Trial limitations: Basic plan features only, maximum 3 videos during trial period."
+    },
+    {
+      "title": "Payment Methods",
+      "description": "We accept all major credit cards (Visa, Mastercard, American Express), PayPal, and wire transfers for annual subscriptions."
+    }
+  ],
+  "faq": [
+    {
+      "question": "What video formats do you support?",
+      "answer": "AutoStream supports all major video formats including MP4, MOV, AVI, MKV, and WebM. We recommend uploading in MP4 format for best results."
+    },
+    {
+      "question": "Can I upgrade from Basic to Pro anytime?",
+      "answer": "Yes! You can upgrade to Pro at any time. You'll be charged the prorated difference, and your billing cycle will remain the same."
+    },
+    {
+      "question": "Do you offer annual plans?",
+      "answer": "Yes, annual plans are available with a 20% discount. Basic annual: $278/year, Pro annual: $758/year."
+    },
+    {
+      "question": "Is there a limit on video length?",
+      "answer": "Basic plan: maximum 30 minutes per video. Pro plan: maximum 3 hours per video."
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+# AutoStream AI Agent - Dependencies
+
+# Core Framework
+langgraph>=0.2.0
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-community>=0.3.0
+
+# LLM Integration (Google Gemini for chat only)
+langchain-google-genai>=2.0.0
+
+# Local Embeddings (Free, no API needed)
+sentence-transformers>=2.2.0
+
+# Vector Store & Embeddings
+faiss-cpu>=1.7.4
+
+# Web Framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.0.0
+
+# Utilities
+python-dotenv>=1.0.0

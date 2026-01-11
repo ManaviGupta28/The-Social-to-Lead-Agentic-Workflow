@@ -1,0 +1,75 @@
+# --- Python ---
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Virtual Environments ---
+venv/
+env/
+ENV/
+.venv/
+env.bak/
+venv.bak/
+
+# --- Environment Variables ---
+.env
+.env.local
+.env.*.local
+.env.secret
+
+# --- IDEs / Editors ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# --- Testing & Documentation ---
+.ipynb_checkpoints
+.pytest_cache/
+.coverage
+htmlcov/
+test_output.txt
+*.log
+
+# --- Models & Cache ---
+# Local cache for HuggingFace/Sentence Transformers
+models/
+.cache/
+sentence-transformers/
+**/sentence-transformers/
+
+# --- Vector Store ---
+# FAISS index files (should be regenerated from source knowledge base)
+*.faiss
+*.pkl
+**/index.faiss
+**/index.pkl
+
+# --- Project Specific Temporaries ---
+diagnose.py
+test_output.txt
+.python-version
