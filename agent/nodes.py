@@ -20,7 +20,6 @@ from agent.state import AgentState
 from agent.tools import mock_lead_capture, extract_lead_info
 from rag.retriever import get_retriever
 
-# Add safety settings to avoid empty responses from filters during debugging
 from langchain_google_genai import HarmCategory, HarmBlockThreshold
 
 safety_settings = {
@@ -90,7 +89,8 @@ User message: {message}
     inquiry_keywords = [
         "how much", "price", "pricing", "cost", "plan", "feature",
         "what is", "tell me about", "do you", "can i", "support",
-        "refund", "cancel", "trial"
+        "refund", "cancel", "trial", "know more", "more info", "more information",
+        "details", "tell me more", "what else"
     ]
     
     # Greeting signals
@@ -137,6 +137,38 @@ def _get_fallback_response(query: str, retriever) -> str:
         with open(kb_path, 'r', encoding='utf-8') as f:
             kb = json.load(f)
         
+        # Handle "know more" / "more info" / "yes" queries - provide comprehensive details
+        know_more_keywords = ["know more", "more info", "more information", "tell me more", "what else", "details"]
+        # Only treat "yes" as "know more" if it's a short response (likely answering "would you like to know more?")
+        if any(kw in query_lower for kw in know_more_keywords) or (query_lower.strip() == "yes" and len(query_lower.split()) == 1):
+            pro_plan = next((p for p in kb['pricing_plans'] if p['name'] == 'Pro Plan'), None)
+            if pro_plan:
+                # Provide ALL features for "know more"
+                all_features = "\n".join(f"• {f}" for f in pro_plan['features'])
+                response = f"Here's everything about the Pro Plan ({pro_plan['price']}):\n\n"
+                response += f"Complete Feature List:\n{all_features}\n\n"
+                
+                if pro_plan.get('recommended_for'):
+                    response += f"Perfect For: {pro_plan['recommended_for']}\n\n"
+                
+                # Add relevant FAQ info
+                faq_info = []
+                for faq in kb.get('faq', []):
+                    if any(word in faq['question'].lower() for word in ['pro', 'upgrade', 'annual', 'video length']):
+                        faq_info.append(f"{faq['question']}\n{faq['answer']}")
+                
+                if faq_info:
+                    response += "Frequently Asked Questions:\n" + "\n\n".join(faq_info[:3]) + "\n\n"
+                
+                # Add trial info
+                trial_policy = next((p for p in kb.get('policies', []) if 'trial' in p['title'].lower()), None)
+                if trial_policy:
+                    response += f"{trial_policy['title']}: {trial_policy['description']}\n\n"
+                
+                response += "Ready to get started? Just say 'I want to get started' or 'sign me up'!"
+                return response
+        
+        
         # Handle pricing/plan questions
         if any(kw in query_lower for kw in ["price", "pricing", "cost", "plan", "how much"]):
             # Check if asking about specific plan
@@ -162,8 +194,7 @@ def _get_fallback_response(query: str, retriever) -> str:
         # Default fallback
         return "I'd be happy to help! AutoStream offers two plans: Basic at $29/month and Pro at $79/month. Both include our AI-powered video editing tools. What would you like to know more about?"
     
-    except Exception as e:
-        print(f"⚠️ Error loading knowledge base for fallback: {e}")
+    except Exception:
         return "I'd be happy to help! AutoStream offers two plans: Basic at $29/month and Pro at $79/month. Both include our AI-powered video editing tools. What would you like to know more about?"
 
 
@@ -175,18 +206,18 @@ def rag_node(state: AgentState) -> Dict[str, Any]:
     messages = state["messages"]
     last_message = messages[-1].content
     
-    print(f"\n--- [DEBUG] RAG Node ---")
-    print(f"User Query: {last_message}")
-    
     retriever = None
     query_lower = last_message.lower()
     
-    # Fast path: For pricing/plan questions, use fallback directly (no LLM call)
-    pricing_keywords = ["price", "pricing", "cost", "how much", "plan", "pro plan", "basic plan", "pro price", "basic price"]
-    is_pricing_query = any(keyword in query_lower for keyword in pricing_keywords)
+    # Fast path: For pricing/plan/know more questions, use fallback directly (no LLM call)
+    fast_path_keywords = [
+        "price", "pricing", "cost", "how much", "plan", "pro plan", "basic plan", 
+        "pro price", "basic price", "know more", "more info", "more information", 
+        "tell me more", "what else", "details", "yes", "i want", "get started"
+    ]
+    is_fast_path_query = any(keyword in query_lower for keyword in fast_path_keywords)
     
-    if is_pricing_query:
-        print("💰 Pricing query detected - using fast fallback (skipping LLM)")
+    if is_fast_path_query:
         try:
             retriever = get_retriever()
             ai_response = _get_fallback_response(last_message, retriever)
@@ -194,21 +225,16 @@ def rag_node(state: AgentState) -> Dict[str, Any]:
                 "messages": [AIMessage(content=ai_response)],
                 "next_action": "end"
             }
-        except Exception as e:
-            print(f"⚠️ Error in fast fallback: {e}")
-            # Continue to LLM path as backup
+        except Exception:
+            pass  # Continue to LLM path as backup
     
     # Standard path: Use LLM with RAG for other questions
     context = None
     
     try:
-        # Retrieve relevant context
         retriever = get_retriever()
-        print("Retrieving context...")
         context = retriever.get_context(last_message, k=3)
-        print(f"Context retrieved (first 100 chars): {context[:100]}...")
         
-        # Create RAG prompt with better structure
         system_prompt = f"""You are a helpful sales assistant for AutoStream, an automated video editing SaaS platform.
 
 IMPORTANT: Answer the user's question using ONLY the information provided in the context below. Be direct and helpful.
@@ -227,38 +253,15 @@ Instructions:
 
 Now answer the user's question:"""
         
-        print(f"--- [LLM PROMPT START] ---")
-        print(system_prompt[:500] + "..." if len(system_prompt) > 500 else system_prompt)
-        print(f"--- [LLM PROMPT END] ---")
-        
-        print("Invoking LLM...")
         response = llm.invoke([HumanMessage(content=system_prompt)])
-        
-        print(f"RAW LLM RESPONSE OBJECT: {response}")
         ai_response = response.content if hasattr(response, 'content') else None
         
-        # Handle empty or None response
         if not ai_response or (isinstance(ai_response, str) and len(ai_response.strip()) == 0):
-            print("⚠️ LLM returned empty or None content!")
-            # Check for safety filter info in response metadata
-            if hasattr(response, 'response_metadata'):
-                print(f"Response Metadata: {response.response_metadata}")
-            # Use fallback with knowledge base
             ai_response = _get_fallback_response(last_message, retriever)
-        else:
-            print(f"LLM Response length: {len(ai_response)}")
-            print("LLM invocation successful.")
-            # Validate response is meaningful (not just error message)
-            if len(ai_response.strip()) < 20:
-                print("⚠️ LLM response too short, using fallback")
-                ai_response = _get_fallback_response(last_message, retriever)
+        elif len(ai_response.strip()) < 20:
+            ai_response = _get_fallback_response(last_message, retriever)
         
-    except Exception as e:
-        print(f"❌ Error in RAG Node: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        
-        # Use fallback response with knowledge base data
+    except Exception:
         ai_response = _get_fallback_response(last_message, retriever)
     
     return {
@@ -276,15 +279,8 @@ def lead_capture_node(state: AgentState) -> Dict[str, Any]:
     waiting_for = state.get("waiting_for")
     last_message = messages[-1].content if messages else ""
     
-    print(f"\n--- [DEBUG] Lead Capture Node ---")
-    print(f"Waiting for: {waiting_for}")
-    print(f"Current lead_info: {lead_info}")
-    print(f"Last message: {last_message}")
-    
-    # If we just detected high intent, start collection
     if waiting_for is None:
         response = "That's great! I'd love to help you get started with the Pro plan. Can I get your name first?"
-        print("Starting lead capture - asking for name")
         return {
             "messages": [AIMessage(content=response)],
             "lead_info": lead_info,
@@ -292,30 +288,21 @@ def lead_capture_node(state: AgentState) -> Dict[str, Any]:
             "next_action": "end"
         }
     
-    # Extract information based on what we're waiting for
     extracted = extract_lead_info(last_message, waiting_for)
-    print(f"Extracted info: {extracted}")
     lead_info.update(extracted)
-    print(f"Updated lead_info: {lead_info}")
     
-    # Determine next step based on what's missing
     if not lead_info.get("name") or lead_info.get("name") == "" or lead_info.get("name") is None:
         response = "Could you please provide your name?"
         next_waiting = "name"
-        print("Still waiting for name")
     elif not lead_info.get("email") or lead_info.get("email") == "" or lead_info.get("email") is None:
         response = f"Thanks, {lead_info['name']}! What's your email address?"
         next_waiting = "email"
-        print(f"Got name: {lead_info['name']}, now asking for email")
     elif not lead_info.get("platform") or lead_info.get("platform") == "" or lead_info.get("platform") is None:
         response = "Great! Which platform do you primarily create content for? (e.g., YouTube, Instagram, TikTok)"
         next_waiting = "platform"
-        print(f"Got email: {lead_info['email']}, now asking for platform")
     else:
-        # All information collected, trigger tool
         next_waiting = None
-        response = None  # Will be set by tool execution
-        print("All info collected, triggering tool")
+        response = None
     
     if next_waiting:
         return {
@@ -336,20 +323,13 @@ def tool_execution_node(state: AgentState) -> Dict[str, Any]:
     """
     Execute the lead capture tool when all info is collected
     """
-    print(f"\n--- [DEBUG] Tool Execution Node ---")
     lead_info = state.get("lead_info", {})
-    
-    print(f"Lead info received: {lead_info}")
-    
-    # Validate that we have all required fields
     name = lead_info.get("name")
     email = lead_info.get("email")
     platform = lead_info.get("platform")
     
     if not name or not email or not platform:
-        error_msg = f"Missing required fields. Name: {name}, Email: {email}, Platform: {platform}"
-        print(f"❌ {error_msg}")
-        response = f"I'm sorry, I'm missing some information. Could you please provide:\n"
+        response = "I'm sorry, I'm missing some information. Could you please provide:\n"
         if not name:
             response += "- Your name\n"
         if not email:
@@ -364,15 +344,7 @@ def tool_execution_node(state: AgentState) -> Dict[str, Any]:
         }
     
     try:
-        # Call the mock lead capture function
-        print(f"Calling mock_lead_capture with: name={name}, email={email}, platform={platform}")
-        result = mock_lead_capture(
-            name=name,
-            email=email,
-            platform=platform
-        )
-        
-        print(f"Tool execution result: {result}")
+        result = mock_lead_capture(name=name, email=email, platform=platform)
         
         if result == "SUCCESS":
             response = f"Perfect! I've got you all set up, {name}. You'll receive an email at {email} with instructions to activate your Pro plan. Welcome to AutoStream! 🎉"
@@ -380,10 +352,7 @@ def tool_execution_node(state: AgentState) -> Dict[str, Any]:
             response = f"I'm sorry, there was an issue capturing your information: {result}. Please try again later."
         
     except Exception as e:
-        print(f"❌ Error in tool execution: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        response = f"I'm sorry, there was a technical issue. Please try again later. Error: {str(e)}"
+        response = "I'm sorry, there was a technical issue. Please try again later."
     
     return {
         "messages": [AIMessage(content=response)],

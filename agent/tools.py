@@ -20,16 +20,11 @@ def mock_lead_capture(name: str, email: str, platform: str) -> str:
     Returns:
         Success message
     """
-    # Validation
     if not name or not email or not platform:
         return "ERROR: Missing required fields"
     
-    # Simulate API call
-    print(f"🎯 Lead captured successfully: {name}, {email}, {platform}")
-    print(f"   Platform: {platform}")
-    print(f"   Email: {email}")
-    print(f"   Name: {name}")
-    
+    # In production, this would call an actual API endpoint
+    # For now, it simulates a successful lead capture
     return "SUCCESS"
 
 

@@ -13,7 +13,6 @@ import os
 from dotenv import load_dotenv
 load_dotenv()  # Load .env file
 
-# Explicitly set cache directories to local project paths (avoid spaces in user profile)
 current_dir = os.path.dirname(os.path.abspath(__file__))
 os.environ['TRANSFORMERS_CACHE'] = os.path.join(current_dir, 'models', 'transformers')
 os.environ['HF_HOME'] = os.path.join(current_dir, 'models', 'huggingface')
@@ -119,7 +118,6 @@ async def webhook(request: WebhookRequest):
     Returns:
         WebhookResponse with agent's reply
     """
-    print(f"\n📩 [DEBUG] Webhook Request Received: '{request.message}' for thread {request.thread_id}")
     try:
         # Create configuration with thread ID for state persistence
         config = {
@@ -147,7 +145,6 @@ async def webhook(request: WebhookRequest):
         else:
             response_text = "I apologize, I didn't understand that. Could you please rephrase?"
         
-        # Get intent for debugging
         intent = result.get("intent", "unknown")
         
         return WebhookResponse(
@@ -158,8 +155,6 @@ async def webhook(request: WebhookRequest):
         )
         
     except Exception as e:
-        # Log error and return graceful response
-        print(f"Error processing webhook: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Error processing request: {str(e)}"

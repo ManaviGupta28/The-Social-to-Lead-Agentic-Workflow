@@ -2,7 +2,7 @@
 
 A production-ready Conversational AI Agent for AutoStream, a SaaS video editing platform. This agent uses **LangGraph** for state management, **RAG** (Retrieval-Augmented Generation) for accurate knowledge retrieval, and **intent detection** to identify high-value leads.
 
-## 🚀 Features
+##  Features
 
 - **Intent Classification**: Detects user intent (greeting, inquiry, high-intent lead)
 - **RAG-Powered Responses**: Answers questions accurately using local knowledge base
@@ -21,7 +21,8 @@ A production-ready Conversational AI Agent for AutoStream, a SaaS video editing 
 ### 1. Clone or Download the Project
 
 ```bash
-cd "c:\Users\Manavi Gupta\Downloads\rag"
+git clone <repository-url>
+cd rag
 ```
 
 ### 2. Create Virtual Environment (Recommended)
@@ -58,14 +59,14 @@ GOOGLE_API_KEY=your_actual_api_key_here
 python main.py
 ```
 
-The server will start on `http://localhost:8000`
+The server will start on `http://localhost:8099`
 
 ## 📡 API Usage
 
 ### Send a Message
 
 ```bash
-curl -X POST "http://localhost:8000/webhook" \
+curl -X POST "http://localhost:8099/webhook" \
   -H "Content-Type: application/json" \
   -d '{
     "message": "Hi, how much is the Pro plan?",
@@ -241,7 +242,7 @@ rag/
 ```python
 import requests
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8099"
 THREAD_ID = "test_user_001"
 
 def send_message(message):
