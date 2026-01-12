@@ -170,6 +170,7 @@ def _get_fallback_response(query: str, retriever) -> str:
 def rag_node(state: AgentState) -> Dict[str, Any]:
     """
     Answer user questions using RAG from knowledge base
+    Optimized for speed - uses fast fallback for pricing questions
     """
     messages = state["messages"]
     last_message = messages[-1].content
@@ -178,6 +179,26 @@ def rag_node(state: AgentState) -> Dict[str, Any]:
     print(f"User Query: {last_message}")
     
     retriever = None
+    query_lower = last_message.lower()
+    
+    # Fast path: For pricing/plan questions, use fallback directly (no LLM call)
+    pricing_keywords = ["price", "pricing", "cost", "how much", "plan", "pro plan", "basic plan", "pro price", "basic price"]
+    is_pricing_query = any(keyword in query_lower for keyword in pricing_keywords)
+    
+    if is_pricing_query:
+        print("💰 Pricing query detected - using fast fallback (skipping LLM)")
+        try:
+            retriever = get_retriever()
+            ai_response = _get_fallback_response(last_message, retriever)
+            return {
+                "messages": [AIMessage(content=ai_response)],
+                "next_action": "end"
+            }
+        except Exception as e:
+            print(f"⚠️ Error in fast fallback: {e}")
+            # Continue to LLM path as backup
+    
+    # Standard path: Use LLM with RAG for other questions
     context = None
     
     try:
@@ -207,7 +228,7 @@ Instructions:
 Now answer the user's question:"""
         
         print(f"--- [LLM PROMPT START] ---")
-        print(system_prompt)
+        print(system_prompt[:500] + "..." if len(system_prompt) > 500 else system_prompt)
         print(f"--- [LLM PROMPT END] ---")
         
         print("Invoking LLM...")
