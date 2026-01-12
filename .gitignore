@@ -58,6 +58,7 @@ test_output.txt
 # --- Models & Cache ---
 # Local cache for HuggingFace/Sentence Transformers
 models/
+models_cache/
 .cache/
 sentence-transformers/
 **/sentence-transformers/
