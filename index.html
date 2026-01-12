@@ -125,7 +125,7 @@
         }
 
         .message-content .intent-badge {
-            display: inline-block;
+            display: none !important; /* Hidden - not showing intent to users */
             font-size: 10px;
             padding: 2px 8px;
             border-radius: 10px;
@@ -325,12 +325,13 @@
             // Use innerHTML to preserve line breaks and formatting
             contentDiv.innerHTML = content.replace(/\n/g, '<br>');
 
-            if (intent && !isUser) {
-                const badge = document.createElement('div');
-                badge.className = 'intent-badge';
-                badge.textContent = `Intent: ${intent}`;
-                contentDiv.appendChild(badge);
-            }
+            // Intent badge removed - not showing intent to users
+            // if (intent && !isUser) {
+            //     const badge = document.createElement('div');
+            //     badge.className = 'intent-badge';
+            //     badge.textContent = `Intent: ${intent}`;
+            //     contentDiv.appendChild(badge);
+            // }
 
             messageDiv.appendChild(contentDiv);
             chatMessages.appendChild(messageDiv);
